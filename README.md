@@ -143,19 +143,22 @@ The application will open in your web browser automatically at:
 
 ## 8. How to Use the UI
 
-1. Click **"Browse files"** or drag-and-drop your vehicle video (`parking_video.mp4`).
-2. Preview the original uploaded video on the left card.
-3. Click the **"🚀 Process Video"** button.
-4. Monitor processing progress on the real-time progress bar.
-5. View the processed video output with license plate bounding box overlays.
-6. Inspect the **Detected License Plates** summary table showing plate numbers and confidence percentages.
-7. Optionally click **"Download Processed Video"** to save the output video file.
+1. Choose your video source:
+   - Select an existing test clip from the dropdown menu (pre-loaded in `input/`), OR
+   - Upload a custom vehicle or parking video (`.mp4`, `.avi`, `.mov`).
+2. Preview the original source video on the left panel.
+3. Configure settings in the sidebar if needed (Frame Sampling Interval, Early Stop Confidence Threshold).
+4. Click the **"Run Detection Pipeline"** button.
+5. Monitor real-time progress on the frame counter and status indicator.
+6. Review the **Primary Detected Plate** high-contrast card and key summary metrics (Confidence, Detection Count, Scanned Frames).
+7. Inspect the side-by-side annotated video with bounding box overlays and download the processed output MP4.
+8. View or export the structured detections registry table as a CSV file.
 
 ---
 
 ## 9. How YOLO & PaddleOCR Work Together
 
-- **YOLO (You Only Look Once)**: A real-time object detector responsible strictly for spatial localization (`x1, y1, x2, y2`). It does **not** read characters.
+- **YOLO (You Only Look Once)**: A real-time object detector responsible strictly for spatial localization (`x1, y1, x2, y2`). It does not read characters.
 - **PaddleOCR**: An Optical Character Recognition engine trained on text datasets. It accepts cropped license plate image patches and extracts text characters (`KA01AB1234`) with confidence scores.
 
 Combining localized bounding box cropping with focused OCR yields significantly higher recognition accuracy than running raw OCR over full HD video frames.
@@ -166,7 +169,7 @@ Combining localized bounding box cropping with focused OCR yields significantly 
 
 - **CPU Mode**: Runs out of the box on standard computer hardware using PyTorch CPU and PaddlePaddle CPU builds.
 - **CUDA / GPU Mode**: Automatically detected if CUDA-enabled PyTorch and GPU drivers are installed. In CUDA mode, both YOLO inference and PaddleOCR execute on GPU for multi-fold speed gains.
-- The UI header displays a badge indicating current execution mode (`🖥️ Processing Device: CPU` or `⚡ Processing Device: CUDA`).
+- The UI header displays a status badge indicating current execution mode (`Compute: CPU` or `Compute: CUDA`).
 
 ---
 
@@ -178,12 +181,13 @@ anpr_phase1/
 ├── app.py                   # Streamlit Web UI application
 ├── config.py                # Configuration parameters & threshold settings
 ├── requirements.txt         # Project dependencies
+├── packages.txt             # Linux system dependencies for cloud deployment
 ├── README.md                # Documentation
 │
 ├── models/                  # Storage for YOLO license plate model weights (.pt)
 │   └── README.md
 │
-├── input/                   # Storage for uploaded video files
+├── input/                   # Storage for sample & uploaded video files
 ├── output/                  # Storage for processed output video files
 │
 ├── plate_detector/          # YOLO License Plate Detection module
@@ -216,9 +220,54 @@ anpr_phase1/
 
 ---
 
-## 13. Phase 1 Scope & Limitations
+## 13. Deployment Guide
 
-This prototype focuses **exclusively** on the core vision pipeline (`Video -> YOLO -> Crop -> PaddleOCR -> Aggregated Results`).
+### Can I deploy this directly on GitHub?
+**No, not directly on GitHub Pages.**
+- **GitHub** is a Git source code hosting service, not a server runtime.
+- **GitHub Pages** only serves static HTML, CSS, and client-side JavaScript. It **cannot** execute a Python backend, PyTorch neural networks, YOLO weights, or OpenCV video processing.
+- However, you **use GitHub to host the repository**, which then integrates directly with cloud platforms to run the live application.
+
+### Recommended Free & Cloud Deployment Options
+
+#### Option A: Streamlit Community Cloud (Free & Recommended for Demos)
+Streamlit provides free cloud hosting for Streamlit applications connected to GitHub:
+1. Push your code to a public or private GitHub repository:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+   git push -u origin main
+   ```
+2. Navigate to [share.streamlit.io](https://share.streamlit.io) and log in with your GitHub account.
+3. Click **"New app"**.
+4. Select your repository, branch (`main`), and set the main file path to `app.py`.
+5. Streamlit Cloud automatically detects `requirements.txt` and `packages.txt` (which installs required Linux OpenCV libraries `libgl1` and `libglib2.0-0`).
+6. Click **Deploy**. The application will be assigned a live public URL.
+
+#### Option B: Hugging Face Spaces (Free CPU / Paid GPU)
+Hugging Face Spaces is designed specifically for machine learning demos:
+1. Create a new Space at [huggingface.co/spaces](https://huggingface.co/spaces).
+2. Choose **Streamlit** as the Space SDK.
+3. Clone the Space repo or push your files (including `requirements.txt` and `packages.txt`).
+4. Hugging Face builds the environment with 2 vCPUs and 16 GB RAM for free, with optional GPU upgrades.
+
+#### Option C: Cloud Virtual Machines (AWS EC2 / DigitalOcean / Azure / GCP)
+For production workloads with dedicated GPU acceleration (NVIDIA CUDA):
+1. Provision an Ubuntu VM instance (e.g., AWS EC2 `g4dn.xlarge` with NVIDIA T4 GPU).
+2. Clone your GitHub repository onto the server.
+3. Install NVIDIA drivers, CUDA toolkit, and Python.
+4. Run Streamlit behind a reverse proxy (Nginx with SSL via Let's Encrypt) or via Docker:
+   ```bash
+   streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+   ```
+
+---
+
+## 14. Phase 1 Scope & Limitations
+
+This prototype focuses **exclusively** on the core vision pipeline (`Video -> YOLO -> Crop -> OCR -> Aggregated Results`).
 
 ### Excluded Features in Phase 1:
 - Database storage & persistence
